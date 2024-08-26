@@ -3,8 +3,11 @@ import { useEffect, useState } from "react";
 
 function App() {
   const [setup, setSetup] = useState(false);
-  const [player, setPlayer] = useState('')
-  const [character, setCharacter] = useState('')
+  const [player, setPlayer] = useState(null);
+  const [character, setCharacter] = useState(null);
+  const [nextLoc, setnextLoc] = useState(null);
+  const [prevLoc, setprevLoc] = useState(null);
+
   //True means A False means B
   const [turn, setTurn] = useState(true);
   const [board, setBoard] = useState([
@@ -14,6 +17,7 @@ function App() {
     ["NA", "NA", "NA", "NA", "NA"],
     ["NA", "NA", "NA", "NA", "NA"],
   ]);
+  const [place, setPlace] = useState(false);
   const [next, setNext] = useState("");
   const wsUri = "ws://127.0.0.1/";
   const websocket = new WebSocket(wsUri);
@@ -69,14 +73,49 @@ function App() {
       console.error("reload page");
     }
   };
-  const handleBoxClick = (row, col) =>{
-    alert(row + " " + col)
-  }
+  const handleBoxClick = (row, col, val) => {
+    if (!setup) {
+      setnextLoc(`${row},${col}`);
+    } else {
+      if (prevLoc) {
+        setnextLoc(`${row},${col}`);
+        websocket.send(`${player}:${character} ${prevLoc} ${row},${col}`);
+        setPlayer(null);
+        setCharacter(null);
+        setnextLoc(null);
+        setprevLoc(null);
+      } else {
+        setPlayer(val[0]);
+        setCharacter(val[2]);
+        setprevLoc(`${row},${col}`);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (nextLoc && character) {
+      setPlace(true);
+    } else {
+      setPlace(false);
+    }
+  }, [nextLoc, character]);
+
+  const handlePlace = () => {
+    if (!setup) {
+      if (player && character && nextLoc) {
+        websocket.send(`${player}:${character} ${nextLoc}`);
+      }
+    }
+    setPlayer(null);
+    setCharacter(null);
+    setnextLoc(null);
+    setprevLoc(null);
+  };
 
   return (
     <div className="App">
       <div className="Board">
-        {String(setup)}
+        {`Setup - ${setup} Player - ${player} PrevLoc - ${prevLoc} NextLoc - ${nextLoc}`}
         {setup ? (
           turn ? (
             <h2>It is A's turn</h2>
@@ -88,35 +127,105 @@ function App() {
         )}
 
         {board.map((row, rowInd) => (
-          <div className="newRow" key={row}>
+          <div className="newRow" key={rowInd}>
+            {rowInd === 0 && !setup ? <>A Here</> : <></>}
+            {rowInd === 4 && !setup ? <> B Here</> : <></>}
             {row.map((val, colInd) => (
-              <div className="values" key={colInd} onClick={()=>handleBoxClick(rowInd, colInd)}>
+              <div
+                className="values"
+                key={colInd}
+                onClick={() => handleBoxClick(rowInd, colInd, val)}
+              >
                 {val}
               </div>
             ))}
           </div>
         ))}
 
-        {!setup ? <div className="setup">
-          <div className="flexrow">
-          
-          <input type="radio" value="A" id="player" name="player" onChange={(e)=>{setPlayer(e.target.value)}}/>
-          <label>A</label> <br />
-          <input type="radio" value="B" id="player" name="player" onChange={(e)=>{setPlayer(e.target.value)}}/>
-          <label>B</label> <br />
-          <br />
+        {!setup ? (
+          <div className="setup">
+            <br />
+            Arrange your characters
+            <br />
+            <div className="flexrow">
+              player
+              <input
+                type="radio"
+                value="A"
+                id="player"
+                name="player"
+                onChange={(e) => {
+                  setPlayer(e.target.value);
+                }}
+              />
+              <label>A</label> <br />
+              <input
+                type="radio"
+                value="B"
+                id="player"
+                name="player"
+                onChange={(e) => {
+                  setPlayer(e.target.value);
+                }}
+              />
+              <label>B</label> <br />
+            </div>
+            <div className="flexrow">
+              character
+              <input
+                type="radio"
+                value="P"
+                id="character"
+                name="character"
+                onChange={(e) => {
+                  setCharacter(e.target.value);
+                }}
+              />
+              <label>P</label> <br />
+              <input
+                type="radio"
+                value="H1"
+                id="character"
+                name="character"
+                onChange={(e) => {
+                  setCharacter(e.target.value);
+                }}
+              />
+              <label>H1</label> <br />
+              <input
+                type="radio"
+                value="H2"
+                id="character"
+                name="character"
+                onChange={(e) => {
+                  setCharacter(e.target.value);
+                }}
+              />
+              <label>H2</label> <br />
+            </div>
+            <div className="flexrow">Location (click on board) {nextLoc}</div>
+            <div className="flexrow">
+              <h2>
+                {player}:{character}
+              </h2>
+
+              {place ? (
+                <button
+                  onClick={() => {
+                    handlePlace();
+                  }}
+                >
+                  Place
+                </button>
+              ) : (
+                <></>
+              )}
+              {setup ? <></> : <></>}
+            </div>
           </div>
-          <div className="flexrow">
-          <input type="radio" value="P" id="character" name="character" onChange={(e)=>{setCharacter(e.target.value)}}/>
-          <label>P</label> <br />
-          <input type="radio" value="H1" id="character" name="character" onChange={(e)=>{setCharacter(e.target.value)}}/>
-          <label>H1</label> <br />
-          <input type="radio" value="H2" id="character" name="character" onChange={(e)=>{setCharacter(e.target.value)}}/>
-          <label>H2</label> <br />
-          <br />
-          </div>
-          <h5>{player}  {character}</h5>
-        </div> : <h5>Setup has been completed</h5>}
+        ) : (
+          <h5>Setup has been completed</h5>
+        )}
 
         <textarea onChange={(e) => setNext(e.target.value)} />
         <button onClick={handleNextMove}> Submit</button>
