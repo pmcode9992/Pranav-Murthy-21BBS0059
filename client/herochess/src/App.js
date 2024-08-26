@@ -2,14 +2,18 @@ import "./App.css";
 import { useEffect, useState } from "react";
 
 function App() {
+  const [msg, setMSG] = useState({});
   const [setup, setSetup] = useState(false);
   const [player, setPlayer] = useState(null);
   const [character, setCharacter] = useState(null);
+
+  const [AChars, setAChars] = useState([]);
+  const [BChars, setBChars] = useState([]);
   const [nextLoc, setnextLoc] = useState(null);
   const [prevLoc, setprevLoc] = useState(null);
 
   //True means A False means B
-  const [turn, setTurn] = useState(true);
+  const [turn, setTurn] = useState("A");
   const [board, setBoard] = useState([
     ["NA", "NA", "NA", "NA", "NA"],
     ["NA", "NA", "NA", "NA", "NA"],
@@ -28,37 +32,24 @@ function App() {
 
     websocket.onmessage = (e) => {
       console.log("recieved" + e.data);
-      const [stp, vals, trn] = e.data.split("**");
-
-      if (trn === "false") {
-        setTurn(false);
-      } else {
-        setTurn(true);
-      }
-
-      if (stp === "false") {
-        setSetup(false);
-      } else {
-        setSetup(true);
-      }
-
-      const matrix = [];
-      const arr = vals.split(",");
-      for (let i = 0; i < 5; i++) {
-        matrix.push(arr.slice(i * 5, i * 5 + 5));
-      }
-      setBoard(matrix);
+      const msg = JSON.parse(e.data);
+      console.log(msg);
+      setTurn(msg.chance);
+      setBoard(msg.board);
+      setSetup(msg.setup);
+      setAChars(msg.A_Chars);
+      setBChars(msg.B_Chars);
     };
 
-    const pingInterval = setInterval(() => {
-      if (websocket.readyState === WebSocket.OPEN) {
-        websocket.send("ping");
-      }
-      return () => {
-        clearInterval(pingInterval);
-        websocket.close();
-      };
-    }, 5000);
+    // const pingInterval = setInterval(() => {
+    //   if (websocket.readyState === WebSocket.OPEN) {
+    //     websocket.send("ping");
+    //   }
+    //   return () => {
+    //     clearInterval(pingInterval);
+    //     websocket.close();
+    //   };
+    // }, 5000);
 
     // websocket.onclose = (e) => {
     //   console.log("DISCONNECTED");
@@ -79,31 +70,38 @@ function App() {
     } else {
       if (prevLoc) {
         setnextLoc(`${row},${col}`);
-        websocket.send(`${player}:${character} ${prevLoc} ${row},${col}`);
+        const msg = {
+          character: player,
+          position2: `${row},${col}`,
+          position1: prevLoc,
+        };
+        websocket.send(JSON.stringify(msg));
         setPlayer(null);
-        setCharacter(null);
         setnextLoc(null);
         setprevLoc(null);
       } else {
-        setPlayer(val[0]);
-        setCharacter(val[2]);
+        setPlayer(val);
         setprevLoc(`${row},${col}`);
       }
     }
   };
 
   useEffect(() => {
-    if (nextLoc && character) {
+    if (nextLoc && player) {
       setPlace(true);
     } else {
       setPlace(false);
     }
-  }, [nextLoc, character]);
+  }, [nextLoc, player]);
 
   const handlePlace = () => {
     if (!setup) {
-      if (player && character && nextLoc) {
-        websocket.send(`${player}:${character} ${nextLoc}`);
+      if (player && nextLoc) {
+        const msg = {
+          character: player,
+          position1: nextLoc,
+        };
+        websocket.send(JSON.stringify(msg));
       }
     }
     setPlayer(null);
@@ -112,12 +110,15 @@ function App() {
     setprevLoc(null);
   };
 
+  const handleSetupPlace = (val) => {
+    setPlayer(val);
+  };
   return (
     <div className="App">
       <div className="Board">
-        {`Setup - ${setup} Player - ${player} PrevLoc - ${prevLoc} NextLoc - ${nextLoc}`}
+        {`Setup - ${setup} Player - ${player} PrevLoc - ${prevLoc} NextLoc - ${nextLoc} Place - ${place} turn - ${turn}`}
         {setup ? (
-          turn ? (
+          turn === "A" ? (
             <h2>It is A's turn</h2>
           ) : (
             <h2>It is B's turn</h2>
@@ -128,8 +129,8 @@ function App() {
 
         {board.map((row, rowInd) => (
           <div className="newRow" key={rowInd}>
-            {rowInd === 0 && !setup ? <>A Here</> : <></>}
-            {rowInd === 4 && !setup ? <> B Here</> : <></>}
+            {rowInd === 0 && !setup ? <>A HERE ==&gt;</> : <></>}
+            {rowInd === 4 && !setup ? <> B HERE ==&gt;</> : <></>}
             {row.map((val, colInd) => (
               <div
                 className="values"
@@ -142,93 +143,41 @@ function App() {
           </div>
         ))}
 
-        {!setup ? (
-          <div className="setup">
-            <br />
-            Arrange your characters
-            <br />
-            <div className="flexrow">
-              player
-              <input
-                type="radio"
-                value="A"
-                id="player"
-                name="player"
-                onChange={(e) => {
-                  setPlayer(e.target.value);
-                }}
-              />
-              <label>A</label> <br />
-              <input
-                type="radio"
-                value="B"
-                id="player"
-                name="player"
-                onChange={(e) => {
-                  setPlayer(e.target.value);
-                }}
-              />
-              <label>B</label> <br />
-            </div>
-            <div className="flexrow">
-              character
-              <input
-                type="radio"
-                value="P"
-                id="character"
-                name="character"
-                onChange={(e) => {
-                  setCharacter(e.target.value);
-                }}
-              />
-              <label>P</label> <br />
-              <input
-                type="radio"
-                value="H1"
-                id="character"
-                name="character"
-                onChange={(e) => {
-                  setCharacter(e.target.value);
-                }}
-              />
-              <label>H1</label> <br />
-              <input
-                type="radio"
-                value="H2"
-                id="character"
-                name="character"
-                onChange={(e) => {
-                  setCharacter(e.target.value);
-                }}
-              />
-              <label>H2</label> <br />
-            </div>
-            <div className="flexrow">Location (click on board) {nextLoc}</div>
-            <div className="flexrow">
-              <h2>
-                {player}:{character}
-              </h2>
-
-              {place ? (
-                <button
+        <>
+          <div className="newRow">
+            <div className="newCol">
+              {AChars.map((val, index) => (
+                <div
+                  className="values"
+                  key={index}
                   onClick={() => {
-                    handlePlace();
+                    handleSetupPlace(val);
                   }}
                 >
-                  Place
-                </button>
-              ) : (
-                <></>
-              )}
-              {setup ? <></> : <></>}
+                  {val}
+                </div>
+              ))}
+            </div>
+            {place  && !setup? (
+              <button onClick={() => handlePlace()}>Place</button>
+            ) : (
+              <></>
+            )}
+            <div className="newCol">
+              {BChars.map((val, index) => (
+                <div
+                  className="values"
+                  key={index}
+                  onClick={() => {
+                    handleSetupPlace(val);
+                  }}
+                >
+                  {val}
+                </div>
+              ))}
             </div>
           </div>
-        ) : (
-          <h5>Setup has been completed</h5>
-        )}
-
-        <textarea onChange={(e) => setNext(e.target.value)} />
-        <button onClick={handleNextMove}> Submit</button>
+        </>
       </div>
     </div>
   );

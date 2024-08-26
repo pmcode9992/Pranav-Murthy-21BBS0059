@@ -10,7 +10,14 @@ body{
 .newRow{
   display: flex;
   flex-direction: row;
-  height: 15vh;
+  height: 13vh;
+  justify-content: space-evenly;
+}
+.newCol{
+  margin: 2%;
+  display: flex;
+  flex-direction: column;
+  width: 13vh;
   justify-content: space-evenly;
 }
 .values{
