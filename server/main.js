@@ -29,20 +29,20 @@ const validateMove = (character, x1, x2, y1, y2, board) => {
     console.log("rejected");
     return false;
   } else if (character[2] === "H" && character[3] === "1") {
-    if ((x2 == x1 + 1 || x2 == x1 - 1) && y1 == y2) {
+    if ((x2 == x1 + 2 || x2 == x1 - 2) && y1 == y2) {
       return true;
     }
-    if ((y2 == y1 + 1 || y2 == y1 - 1) && x1 == x2) {
+    if ((y2 == y1 + 2 || y2 == y1 - 2) && x1 == x2) {
       return true;
     }
     console.log("rejected");
     return false;
   } else {
     if (
-      (x2 == x1 + 1 && y2 == y1 + 1) ||
-      (x2 == x1 - 1 && y2 == y1 + 1) ||
-      (x2 == x1 + 1 && y2 == y1 - 1) ||
-      (x2 == x1 - 1 && y2 == y1 - 1)
+      (x2 == x1 + 2 && y2 == y1 + 2) ||
+      (x2 == x1 - 2 && y2 == y1 + 2) ||
+      (x2 == x1 + 2 && y2 == y1 - 2) ||
+      (x2 == x1 - 2 && y2 == y1 - 2)
     ) {
       return true;
     }
@@ -98,6 +98,8 @@ Deno.serve({
             }
             socket.send(JSON.stringify(msg));
           }
+          socket.send(JSON.stringify(msg));
+        
         } else {
           // Game part
           const req = JSON.parse(event.data);
@@ -140,11 +142,17 @@ Deno.serve({
                   msg.B_Chars.push(msg.board[x2][y2]);
                 }
                 msg.board[x2][y2] = character;
-                msg.chance = msg.chance == "A" ? "B" : "A";
-                if(msg.A_Chars.length == 5){socket.send("B")}
-                else if(msg.B_Chars.length == 5){socket.send("A")}
-                else{socket.send(msg);}
+                msg.chance = msg.chance === "A" ? "B" : "A";
+                
+                if (msg.A_Chars.length === 5) {
+                  socket.send("B");
+                } else if (msg.B_Chars.length === 5) {
+                  socket.send("A");
+                } else {
+                  socket.send(JSON.stringify(msg)); // Ensure this is stringified
+                }
               }
+              
             }
           }
         }
