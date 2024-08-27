@@ -2,17 +2,12 @@ import "./App.css";
 import { useEffect, useState } from "react";
 
 function App() {
-  const [msg, setMSG] = useState({});
   const [setup, setSetup] = useState(false);
   const [player, setPlayer] = useState(null);
-  const [character, setCharacter] = useState(null);
-
   const [AChars, setAChars] = useState([]);
   const [BChars, setBChars] = useState([]);
   const [nextLoc, setnextLoc] = useState(null);
   const [prevLoc, setprevLoc] = useState(null);
-
-  //True means A False means B
   const [turn, setTurn] = useState("A");
   const [board, setBoard] = useState([
     ["NA", "NA", "NA", "NA", "NA"],
@@ -22,9 +17,14 @@ function App() {
     ["NA", "NA", "NA", "NA", "NA"],
   ]);
   const [place, setPlace] = useState(false);
-  const [next, setNext] = useState("");
   const wsUri = "ws://127.0.0.1/";
   const websocket = new WebSocket(wsUri);
+  useEffect(()=>{
+    if(setup && (AChars.length === 5 || BChars.length === 5)){
+      if(BChars.length === 5){setBoard([["A WINS!!!"]])}
+      else{setBoard([["B WINS!!!"]])}
+    }
+  },[AChars, BChars, setup])
   useEffect(() => {
     websocket.onopen = (e) => {
       console.log("connected");
@@ -32,13 +32,17 @@ function App() {
 
     websocket.onmessage = (e) => {
       console.log("recieved" + e.data);
-      const msg = JSON.parse(e.data);
-      console.log(msg);
-      setTurn(msg.chance);
-      setBoard(msg.board);
-      setSetup(msg.setup);
-      setAChars(msg.A_Chars);
-      setBChars(msg.B_Chars);
+      if (e.data === "A" || e.data === "B") {
+        alert(e.data + "WINS!!!!");
+        setBoard([[]]);
+      } else {
+        const msg = JSON.parse(e.data);
+        setTurn(msg.chance);
+        setBoard(msg.board);
+        setSetup(msg.setup);
+        setAChars(msg.A_Chars);
+        setBChars(msg.B_Chars);
+      }
     };
 
     // const pingInterval = setInterval(() => {
@@ -56,14 +60,6 @@ function App() {
     //   // clearInterval(pingInterval);
     // };
   }, [wsUri]);
-
-  const handleNextMove = () => {
-    if (websocket.readyState === websocket.OPEN) {
-      websocket.send(next);
-    } else {
-      console.error("reload page");
-    }
-  };
   const handleBoxClick = (row, col, val) => {
     if (!setup) {
       setnextLoc(`${row},${col}`);
@@ -93,7 +89,6 @@ function App() {
       setPlace(false);
     }
   }, [nextLoc, player]);
-
   const handlePlace = () => {
     if (!setup) {
       if (player && nextLoc) {
@@ -105,18 +100,31 @@ function App() {
       }
     }
     setPlayer(null);
-    setCharacter(null);
     setnextLoc(null);
     setprevLoc(null);
   };
-
   const handleSetupPlace = (val) => {
     setPlayer(val);
   };
+
+  const instructions = {
+    P: `
+    Pawn moves 1 step (Left, Right, Front, Back) and CANNOT KILL OPPONENT PAWNS
+    `,
+    H1: `
+    Hero 1 moves 1 step (Left, Right, Front, Back) and CAN KILL OPPONENT PAWNS
+    `,
+    H2 : `
+    Hero 2 moves 1 step diagonally and CAN KILL OPPONENT PAWNS
+    `,
+  }
   return (
     <div className="App">
       <div className="Board">
-        {`Setup - ${setup} Player - ${player} PrevLoc - ${prevLoc} NextLoc - ${nextLoc} Place - ${place} turn - ${turn}`}
+
+        {player && setup ? <>
+        {player[2] === 'P' ? instructions.P : (player[3] === '1' ? instructions.H1 : instructions.H2)}
+        </> : <></>}
         {setup ? (
           turn === "A" ? (
             <h2>It is A's turn</h2>
@@ -158,7 +166,7 @@ function App() {
                 </div>
               ))}
             </div>
-            {place  && !setup? (
+            {place && !setup ? (
               <button onClick={() => handlePlace()}>Place</button>
             ) : (
               <></>

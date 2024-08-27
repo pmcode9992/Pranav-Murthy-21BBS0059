@@ -17,6 +17,40 @@ let msg = {
   B_Chars: B,
 };
 
+const validateMove = (character, x1, x2, y1, y2, board) => {
+  console.log(character, x1, x2, y1, y2, board);
+  if (character[2] === "P") {
+    if ((x2 == x1 + 1 || x2 == x1 - 1) && y1 == y2 && board[x2][y2] === "NA") {
+      return true;
+    }
+    if ((y2 == y1 + 1 || y2 == y1 - 1) && x1 == x2 && board[x2][y2] === "NA") {
+      return true;
+    }
+    console.log("rejected");
+    return false;
+  } else if (character[2] === "H" && character[3] === "1") {
+    if ((x2 == x1 + 1 || x2 == x1 - 1) && y1 == y2) {
+      return true;
+    }
+    if ((y2 == y1 + 1 || y2 == y1 - 1) && x1 == x2) {
+      return true;
+    }
+    console.log("rejected");
+    return false;
+  } else {
+    if (
+      (x2 == x1 + 1 && y2 == y1 + 1) ||
+      (x2 == x1 - 1 && y2 == y1 + 1) ||
+      (x2 == x1 + 1 && y2 == y1 - 1) ||
+      (x2 == x1 - 1 && y2 == y1 - 1)
+    ) {
+      return true;
+    }
+    console.log("rejected");
+    return false;
+  }
+};
+
 Deno.serve({
   port: 80,
   handler: async (request) => {
@@ -26,7 +60,6 @@ Deno.serve({
         console.log("CONNECTED");
         socket.send(JSON.stringify(msg));
       };
-
       socket.onmessage = (event) => {
         //Get move
         console.log(`RECEIVED: ${event.data}`);
@@ -41,8 +74,9 @@ Deno.serve({
 
           if (x <= 4 && x >= 0 && y <= 4 && y >= 0) {
             if (
-              (character[0] == "A" && x == 0) ||
-              (character[0] == "B" && x == 4)
+              ((character[0] == "A" && x == 0) ||
+              (character[0] == "B" && x == 4)) && 
+              board[x][y] === "NA"
             ) {
               msg.board[x][y] = character;
 
@@ -77,8 +111,14 @@ Deno.serve({
             (msg.chance === "A" && character[0] === "A") ||
             (msg.chance === "B" && character[0] === "B")
           ) {
-            const [x1, y1] = position1.split(",");
-            const [x2, y2] = position2.split(",");
+            const [x1, y1] = [
+              parseInt(position1.split(",")[0]),
+              parseInt(position1.split(",")[1]),
+            ];
+            const [x2, y2] = [
+              parseInt(position2.split(",")[0]),
+              parseInt(position2.split(",")[1]),
+            ];
             //check board constraints
             if (
               x1 <= 4 &&
@@ -91,7 +131,7 @@ Deno.serve({
               y2 >= 0
             ) {
               //game rules
-              // if (validateMove(character, x1, x2, y1, y2, board)) {
+              if (validateMove(character, x1, x2, y1, y2, msg.board)) {
                 msg.board[x1][y1] = "NA";
                 if (msg.board[x2][y2][0] === "A") {
                   msg.A_Chars.push(msg.board[x2][y2]);
@@ -101,8 +141,10 @@ Deno.serve({
                 }
                 msg.board[x2][y2] = character;
                 msg.chance = msg.chance == "A" ? "B" : "A";
-                socket.send(msg);
-              // }
+                if(msg.A_Chars.length == 5){socket.send("B")}
+                else if(msg.B_Chars.length == 5){socket.send("A")}
+                else{socket.send(msg);}
+              }
             }
           }
         }
